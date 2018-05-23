@@ -6,7 +6,7 @@
 ;; Change this to manually turn threading support on or off.
 (eval-when (:compile-toplevel :load-toplevel :execute)
   #+(or allegro armedbear cmu corman (and digitool ccl-5.1)
-        ecl lispworks openmcl sbcl)
+        ecl lispworks openmcl sbcl genera)
   (pushnew :postmodern-thread-safe *features*)
 
   #+(or allegro clisp ecl lispworks mcl openmcl cmu sbcl)
@@ -30,7 +30,7 @@
                          (:file "util" :depends-on ("query"))
                          (:file "transaction" :depends-on ("query"))
                          (:file "namespace" :depends-on ("query"))
-                         (:file "table" :depends-on ("util" "transaction")
+                         (:file "table" :depends-on ("util" "transaction" "query")
                                 :if-feature :postmodern-use-mop)
                          (:file "deftable" :depends-on
                                 ("query" (:feature :postmodern-use-mop "table"))))))

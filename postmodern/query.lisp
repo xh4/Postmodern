@@ -24,6 +24,8 @@
   (loop :while (next-row)
         :collect (next-field (elt fields 0))))
 
+(defvar *class-finalize-lock* (bt:make-lock))
+
 (defparameter *result-styles*
   '((:none ignore-row-reader all-rows)
     (:lists list-row-reader all-rows)
@@ -52,17 +54,22 @@ returned.")
   (let ((format-spec (cdr (assoc format *result-styles*))))
     (if format-spec
 	`(',(car format-spec) ,@(cdr format-spec))
-	(destructuring-bind (class &optional result)
+	(destructuring-bind (class-name &optional result)
 	    (dao-spec-for-format format)
-	  (unless class
+	  (unless class-name
 	    (error "~S is not a valid result style." format))
-	  (let ((class-name (gensym)))
-	    (list `(let ((,class-name (find-class ',class)))
-		     (unless (class-finalized-p ,class-name)
-		       (finalize-inheritance ,class-name))
-		     (dao-row-reader ,class-name))
+	  (let ((class (gensym)))
+	    (list `(let ((,class (find-class ',class-name)))
+		     (unless (class-finalized-p ,class)
+		       #+postmodern-thread-safe
+		       (bordeaux-threads:with-lock-held (*class-finalize-lock*)
+			 (unless (class-finalized-p ,class)
+			   (finalize-inheritance ,class)))
+		       #-postmodern-thread-safe
+		       (finalize-inheritance ,class))
+		     (dao-row-reader ,class))
 		  (if (eq result :single)
-		      'single-row 
+		      'single-row
 		      'all-rows)))))))
 
 (defmacro all-rows (form)
